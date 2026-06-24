@@ -63,7 +63,14 @@ const SITE_EXCLUDE = new Set(['bch-vkx-scalarmult']);
 
 const categoryOf = (r: BenchmarkResult): Category => {
   if (r.impl.demo === true) return 'demo';
-  return r.impl.proofSystem === 'Groth16' ? 'full' : 'partial';
+  // 'full' = a COMPLETE verifier (its own proof-system leaderboard); 'partial' = a
+  // checkpoint / sub-step of one (e.g. the vk_x MSM). The Groth16 chunked/singleton and
+  // the Circle-STARK singleton are complete verifiers; the vkx/pairing entries are
+  // sub-steps. (The Groth16-BN254 frontier/leader anchors below scope themselves to
+  // Groth16, so a non-Groth16 full verifier does not pollute them.)
+  if (r.impl.proofSystem === 'Groth16') return 'full';
+  if (r.impl.proofSystem === 'Circle-STARK') return 'full';
+  return 'partial';
 };
 
 // The real BCH blockers, computed independently (the benchmark records only the
@@ -228,16 +235,20 @@ const main = async () => {
 
   const byId = (id: string) => entries.find((e) => e.id === id);
   const full = entries.filter((e) => e.category === 'full');
+  // The artifact's frontier (statement.proofSystem='Groth16', curve='BN254') is the
+  // Groth16 leaderboard; its leader/current anchors compare Groth16 verifiers only, so a
+  // non-Groth16 full verifier (e.g. the M31 Circle-STARK) must NOT be eligible for them.
+  const groth16Full = full.filter((e) => e.proofSystem === 'Groth16');
   // current best GENUINE BCH-native verifier (none yet -> null): fits the per-tx limits
   // AND verifies any proof at runtime. Instance-specific (baked) artifacts fit but are
   // excluded, so neither the frontier "current" nor the score-history records them.
-  const bestBchNative = full
+  const bestBchNative = groth16Full
     .filter((e) => e.bch.compatible && e.generality.runtimeGeneral && e.packaging.secure)
     .sort((a, b) => a.score - b.score)[0];
   // smallest BCH-native (non-baseline) full verifier: the current frontier leader,
   // whether or not it already fits BCH per-tx limits. A P2SH20-packaged entry is
   // disqualified, so it can never be the leader.
-  const leader = full
+  const leader = groth16Full
     .filter((e) => !e.official && e.packaging.secure)
     .sort((a, b) => a.score - b.score)[0];
 

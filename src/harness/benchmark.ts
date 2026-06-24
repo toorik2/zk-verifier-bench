@@ -10,6 +10,7 @@ import { bchGroth16Bls12381Singleton } from '../implementations/bch-groth16-bls1
 import { bchGroth16Chunked } from '../implementations/bch-groth16-chunked.js';
 import { bchGroth16ChunkedCovenant } from '../implementations/bch-groth16-chunked-covenant.js';
 import { bchGroth16Singleton } from '../implementations/bch-groth16-singleton.js';
+import { bchCircleStark } from '../implementations/bch-circle-stark.js';
 import { bchMultistepDemo } from '../implementations/bch-multistep-demo.js';
 import { bchPairingBls12381Chunked } from '../implementations/bch-pairing-bls12381-chunked.js';
 import { bchPairingBls12381Singleton } from '../implementations/bch-pairing-bls12381-singleton.js';
@@ -61,7 +62,7 @@ const limitReason = (error: string): string => {
   return 'limit';
 };
 
-export const REGISTRY: Implementation[] = [nchain, scryptBn256, bchGroth16Singleton, bchGroth16Bls12381Singleton, bchGroth16Chunked, bchGroth16ChunkedCovenant, bchVkxScalarmult, bchVkxSingleton, bchVkxBls12381Singleton, bchVkxChunkedTwoloop, bchVkxChunkedShamir, bchVkxChunkedCovenant, bchVkxBls12381ChunkedCovenant, bchPairingSingleton, bchPairingBls12381Singleton, bchPairingChunked, bchPairingBls12381Chunked, bchGroth16Bls12381Chunked, bchGroth16Bls12381ChunkedCovenant, bchPairingIntratx, bchGroth16Intratx, bchPairingBls12381Intratx, bchGroth16Bls12381Intratx, bchMultistepDemo];
+export const REGISTRY: Implementation[] = [nchain, scryptBn256, bchGroth16Singleton, bchGroth16Bls12381Singleton, bchGroth16Chunked, bchGroth16ChunkedCovenant, bchVkxScalarmult, bchVkxSingleton, bchVkxBls12381Singleton, bchVkxChunkedTwoloop, bchVkxChunkedShamir, bchVkxChunkedCovenant, bchVkxBls12381ChunkedCovenant, bchPairingSingleton, bchPairingBls12381Singleton, bchPairingChunked, bchPairingBls12381Chunked, bchGroth16Bls12381Chunked, bchGroth16Bls12381ChunkedCovenant, bchPairingIntratx, bchGroth16Intratx, bchPairingBls12381Intratx, bchGroth16Bls12381Intratx, bchCircleStark, bchMultistepDemo];
 
 // Zero-padding accounting: the chunked/intra-tx steps append one big all-zero push to each
 // unlocking purely to buy op-cost budget ((41+len)*800). Its full encoded length (push

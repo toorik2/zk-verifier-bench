@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "generatedAt": "2026-06-23T22:08:04.272Z",
+  "generatedAt": "2026-06-24T01:42:51.222Z",
   "statement": {
     "proofSystem": "Groth16",
     "curve": "BN254",
@@ -1612,6 +1612,65 @@
         "detail": "securely packaged (P2SH32, bare, or P2S — no insecure P2SH20 envelope)"
       },
       "source": "BCH-native CashScript: the full BLS12-381 Groth16 verifier (vk_x -> batched 4-pair optimal-ate Miller -> final exponentiation -> assert product==1) laid out as the INPUTS of ONE transaction. Each input carries its incoming state as a raw 48-byte-limb blob and binds the chain by forward-checking its successor via tx.inputs[idx+1].unlockingBytecode introspection (OP_INPUTBYTECODE) — no NFT-commitment hand-off, no hashing, arbitrary intermediate size. The easy-part inverse rides as an uncommitted witness. Every input fits one BCH budget (op-cost <=8,032,800, scripts <=10,000 B); the whole verifier is one non-standard (<1 MB) transaction. Same chunk math as bch-groth16-bls12381-chunked; one fixed set of input scripts verifies any proof for the VK (proof in the witness). Deployed as P2SH32 so each chunk's redeem rides in the scriptSig, where it counts toward the op-cost budget and offsets the pad (~27% fewer on-chain bytes than bare-script)."
+    },
+    {
+      "id": "bch-circle-stark",
+      "name": "Circle-STARK verifier (FRI/M31, hash-only, single-tx) — Fibonacci AIR, Fib(32)=3524578",
+      "category": "full",
+      "official": false,
+      "solver": null,
+      "curve": "M31",
+      "structure": "single-tx",
+      "proofSystem": "Circle-STARK",
+      "score": 14727,
+      "size": {
+        "scriptBytes": 14640,
+        "txOverheadBytes": 87,
+        "transactions": 1,
+        "total": 14727
+      },
+      "padding": {
+        "bytes": 0,
+        "fraction": 0
+      },
+      "benchmarks": {
+        "smallProof": {
+          "opCost": 658500,
+          "steps": 1,
+          "heaviestStepOpCost": 658500,
+          "inputsForHeaviestStep": 1
+        }
+      },
+      "bsvSingleton": false,
+      "bsvOpReturn": false,
+      "bch": {
+        "compatible": true,
+        "blockers": [],
+        "detail": "every step fits BCH per-tx limits",
+        "standard": {
+          "fits": false,
+          "detail": "1/1 locking >201 B"
+        }
+      },
+      "generality": {
+        "binding": "runtime",
+        "runtimeGeneral": false,
+        "proofsTested": 1,
+        "proofsPassed": 1,
+        "detail": "runtime-general by construction: proof supplied in the unlocking witness (1 reference proof available)"
+      },
+      "tokenSafety": null,
+      "inputValidation": {
+        "enforced": false,
+        "tested": 0,
+        "rejected": 0,
+        "detail": "NOT demonstrated — no isolated adversarial-point run that rejects a bad point at a validation check (a naive point-swap in a single-tx verifier is caught by the pairing equation, not by validation)"
+      },
+      "packaging": {
+        "secure": true,
+        "detail": "securely packaged (P2SH32, bare, or P2S — no insecure P2SH20 envelope)"
+      },
+      "source": "BCH-native straight-line bytecode: the FIRST sound STARK verifier on BCH, in ONE transaction, hash-only (no pairing / no EC). Circle-STARK over M31 (p=2^31-1), SHA256-Merkle, SHA256-Fiat-Shamir (OP_HASH256). DEEP-ALI + circle-FRI low-degree test. AIR = 2-column Fibonacci, statement \"Fib(32)=3524578\". The verifier recomputes the full FS transcript, checks the boundary statement, the OOD AIR quotient identity q(zeta)*V(zeta)==residual (V = the exact vanishing poly of the constrained rows — the transition binding), the constant final FRI codeword, and per query Merkle-opens c0,c1,q + reconstructs the DEEP quotient + folds to the final constant. A false statement => composition not divisible by V => non-low-degree DEEP quotient => FRI rejects. Cleared for the single-input AIR by 3 independent red-teams (wrong-seed / arbitrary-target / per-row / wrap forges all REJECT on the real BCH 2026 VM). Single-input small-AIR (n=32, NQ=2) DEMONSTRATOR: proof rides the unlocking witness; op-cost 658,500 (~14% of one input's budget) so it FITS a SINGLE tx (unlike op-bound Groth16). Locking ~8.7 KB: under the 10,000 B consensus cap (BCH-compatible, mineable directly) but over the 201 B standard locking cap, so it is shipped bare and is NON-STANDARD (like the Groth16 singleton pre-P2SH). The multi-input scale-up (2^12 AIR, the projected \"beats Groth16\" numbers) is a SEPARATE still-open problem, NOT this entry."
     },
     {
       "id": "bch-multistep-demo",
