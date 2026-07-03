@@ -1,0 +1,20 @@
+pragma cashscript ^0.13.0;
+
+// Minimal WITNESS-CARRYING verifier for the forgery-soundness benchmark test (docs/forgery-soundness.md).
+// It stands in for a residue final-exponentiation Groth16 verifier: instead of computing the hard
+// verification relation on-chain, it accepts a residue witness c=(ce,co) in Fp2 and checks the CHEAP
+// cross-multiplication  Le*Fo == Fe*Lo  with  L = c^2  (so L = 0 iff c = 0). That certifies L is
+// parallel to the public F, i.e. there exists a scalar w with c^2 = w*F — the exact shape of our real
+// cross-mult residue check. The c=0 witness makes the cross-mult 0 == 0 for ANY public F, so it is a
+// UNIVERSAL forged proof unless a c != 0 guard blocks it. This is the SOUND contract; the broken twin
+// omits the single guard line.
+contract WitnessedResidueDemo() {
+    function verify(int Fe, int Fo, int ce, int co) {
+        require(ce != 0 || co != 0);        // <-- the c != 0 guard (WitnessedResidueDemoBroken omits this)
+        int p = 2305843009213693951;        // 2^61 - 1 (prime)
+        int xi = 3;
+        int Le = (ce * ce + xi * (co * co)) % p;
+        int Lo = (2 * (ce * co)) % p;
+        require((Le * Fo) % p == (Fe * Lo) % p);
+    }
+}

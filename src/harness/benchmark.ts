@@ -12,6 +12,7 @@ import { bchGroth16Chunked } from '../implementations/bch-groth16-chunked.js';
 import { bchGroth16ChunkedCovenant } from '../implementations/bch-groth16-chunked-covenant.js';
 import { bchGroth16ChunkedCovenantResidue } from '../implementations/bch-groth16-chunked-covenant-residue.js';
 import { bchGroth16Singleton } from '../implementations/bch-groth16-singleton.js';
+import { forgeryDemoSound, forgeryDemoBroken } from '../implementations/forgery-demo.js';
 import { bchGroth16SingletonOpcodeOptimized } from '../implementations/bch-groth16-singleton-opcode-optimized.js';
 import { bchGroth16SingletonMinOp } from '../implementations/bch-groth16-singleton-minop.js';
 import { bchMultistepDemo } from '../implementations/bch-multistep-demo.js';
@@ -69,7 +70,7 @@ const limitReason = (error: string): string => {
   return 'limit';
 };
 
-export const REGISTRY: Implementation[] = [nchain, scryptBn256, bchGroth16Singleton, bchGroth16SingletonOpcodeOptimized, bchGroth16SingletonMinOp, bchGroth16Bls12381Singleton, bchGroth16Chunked, bchGroth16ChunkedCovenant, bchGroth16ChunkedCovenantResidue, bchVkxScalarmult, bchVkxSingleton, bchVkxBls12381Singleton, bchVkxChunkedTwoloop, bchVkxChunkedShamir, bchVkxChunkedCovenant, bchVkxBls12381ChunkedCovenant, bchPairingSingleton, bchPairingBls12381Singleton, bchPairingChunked, bchPairingBls12381Chunked, bchGroth16Bls12381Chunked, bchGroth16Bls12381ChunkedCovenant, bchGroth16Bls12381ChunkedCovenantResidue, bchPairingIntratx, bchGroth16Intratx, bchGroth16IntratxResidue, bchGroth16Grouped, bchGroth16GroupedResidue, bchPairingBls12381Intratx, bchGroth16Bls12381Intratx, bchGroth16Bls12381Grouped, bchMultistepDemo];
+export const REGISTRY: Implementation[] = [nchain, scryptBn256, bchGroth16Singleton, bchGroth16SingletonOpcodeOptimized, bchGroth16SingletonMinOp, bchGroth16Bls12381Singleton, bchGroth16Chunked, bchGroth16ChunkedCovenant, bchGroth16ChunkedCovenantResidue, bchVkxScalarmult, bchVkxSingleton, bchVkxBls12381Singleton, bchVkxChunkedTwoloop, bchVkxChunkedShamir, bchVkxChunkedCovenant, bchVkxBls12381ChunkedCovenant, bchPairingSingleton, bchPairingBls12381Singleton, bchPairingChunked, bchPairingBls12381Chunked, bchGroth16Bls12381Chunked, bchGroth16Bls12381ChunkedCovenant, bchGroth16Bls12381ChunkedCovenantResidue, bchPairingIntratx, bchGroth16Intratx, bchGroth16IntratxResidue, bchGroth16Grouped, bchGroth16GroupedResidue, bchPairingBls12381Intratx, bchGroth16Bls12381Intratx, bchGroth16Bls12381Grouped, bchMultistepDemo, forgeryDemoSound, forgeryDemoBroken];
 
 // Zero-padding accounting: the chunked/intra-tx steps append one big all-zero push to each
 // unlocking purely to buy op-cost budget ((41+len)*800). Its full encoded length (push
@@ -295,6 +296,7 @@ export const benchmark = (impl: Implementation, scenario: Awaited<ReturnType<Imp
       proofBinding: impl.proofBinding ?? 'runtime', proofsTested: 1, proofsPassed: 0, runtimeGeneral: false,
       ...tokenSafetyOf(scenario, impl),
       inputValidation: { tested: 0, rejected: 0, enforced: false },
+      soundness: { model: impl.soundnessModel ?? 'on-chain', forgeryTested: 0, forgeryRejected: 0, demonstrated: (impl.soundnessModel ?? 'on-chain') === 'on-chain' },
       checkpointStats: [],
       stepCount: steps.length,
       totalBytes: steps.reduce((a, s) => a + s.lockingBytes + s.unlockingBytes, 0),
@@ -372,6 +374,21 @@ export const benchmark = (impl: Implementation, scenario: Awaited<ReturnType<Imp
   const inputRejected = inputRuns.filter((run) => runRejects(vm, run, bsv)).length;
   const inputValidation = { tested: inputRuns.length, rejected: inputRejected, enforced: inputRuns.length > 0 && inputRejected === inputRuns.length };
 
+  // Forgery-soundness: a WITNESS-CARRYING verifier (Implementation.soundnessModel === 'witnessed')
+  // offloads part of the verification relation to an off-chain-computed unlocking witness, so the
+  // bit-flip `tamperable` invalid runs above do NOT probe its real attack surface — an attacker who
+  // controls the whole unlocking crafts a CONSISTENT witness for a FALSE statement. scenario.forgery
+  // supplies those runs, each built by the verifier's OWN honest witness generator (the one that also
+  // produces the accepted valid runs, so it cannot pass by shipping trivially-weak forgeries); each
+  // MUST reject. An 'on-chain' verifier recomputes the relation and has no such surface: it supplies
+  // none and `demonstrated` is vacuously true. A 'witnessed' verifier that does not reject every
+  // forgery (or supplies none) is NOT sound-demonstrated and FAILS `pass` below.
+  const forgeryRuns = scenario.forgery ?? [];
+  const forgeryRejected = forgeryRuns.filter((run) => runRejects(vm, run, bsv)).length;
+  const soundnessModel = impl.soundnessModel ?? 'on-chain';
+  const forgeryDemonstrated = soundnessModel === 'on-chain' || (forgeryRuns.length > 0 && forgeryRejected === forgeryRuns.length);
+  const soundness = { model: soundnessModel, forgeryTested: forgeryRuns.length, forgeryRejected, demonstrated: forgeryDemonstrated };
+
   const opCosts = steps.map((s) => s.operationCost);
   const maxStepOperationCost = opCosts.length ? Math.max(...opCosts) : 0;
   const budget = standardInputBudget();
@@ -412,13 +429,14 @@ export const benchmark = (impl: Implementation, scenario: Awaited<ReturnType<Imp
     validPassed,
     invalidRejected,
     invalidTotal: invalidRuns.length,
-    pass: validPassed && worstCaseAccepted && invalidRuns.length > 0 && invalidRejected === invalidRuns.length && env.secure,
+    pass: validPassed && worstCaseAccepted && invalidRuns.length > 0 && invalidRejected === invalidRuns.length && forgeryDemonstrated && env.secure,
     proofBinding,
     proofsTested,
     proofsPassed,
     runtimeGeneral,
     ...tokenSafetyOf(scenario, impl),
     inputValidation,
+    soundness,
     bsvOpReturn: bsv,
     steps,
     checkpointStats,

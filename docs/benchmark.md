@@ -57,6 +57,14 @@ just `valid: [oneStep]`.
   either given explicitly or, if `tamperable`, derived by flipping a bit in each
   step's witness (works when witnesses are push-only data). A run is "rejected"
   if any of its steps fails.
+- **Forgery-soundness.** A **witness-carrying** verifier (`soundnessModel:
+  'witnessed'` — it offloads part of the relation to an off-chain-computed unlocking
+  witness, e.g. a residue final-exponentiation witness) has a soundness surface the
+  bit-flip tamper test does not reach: a *consistent* witness forged for a **false**
+  statement. Such a verifier must supply `Scenario.forgery` runs (built by its own
+  honest generator on false statements) and reject every one, or it **fails** `pass`.
+  On-chain verifiers recompute the relation and opt out. See
+  [`docs/forgery-soundness.md`](forgery-soundness.md).
 - **Multi-tx note.** The harness evaluates each step's script independently;
   cross-step continuity is whatever each step's script enforces (e.g. the
   hash256 commitment in the BCH demo), not a simulated on-chain covenant.

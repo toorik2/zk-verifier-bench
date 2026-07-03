@@ -209,6 +209,23 @@ const entryOf = (r: BenchmarkResult) => ({
           ? `on-curve + G2-subgroup checks enforced: ${r.inputValidation.rejected}/${r.inputValidation.tested} adversarial points (off-curve / off-subgroup) rejected at an isolated check`
           : `NOT enforced: only ${r.inputValidation.rejected}/${r.inputValidation.tested} adversarial points rejected — raw points reach the pairing`,
   },
+  // forgery-soundness: a witness-carrying verifier (offloads part of the relation to an
+  // off-chain-computed unlocking witness) must reject a CONSISTENT forged witness for a FALSE
+  // statement — a surface the bit-flip tamper test does not reach. An on-chain verifier recomputes
+  // the relation and has no such surface (demonstrated vacuously). A 'witnessed' verifier with
+  // demonstrated=false is disqualified (folded into pass).
+  soundness: {
+    model: r.soundness.model,
+    demonstrated: r.soundness.demonstrated,
+    forgeryTested: r.soundness.forgeryTested,
+    forgeryRejected: r.soundness.forgeryRejected,
+    detail:
+      r.soundness.model === 'on-chain'
+        ? 'on-chain relation (no witness-forgery surface): a false statement cannot satisfy the recomputed verification equation'
+        : r.soundness.demonstrated
+          ? `witnessed final-exp: ${r.soundness.forgeryRejected}/${r.soundness.forgeryTested} consistent forgeries (best witness for a false statement, incl. the degenerate c=0) rejected`
+          : `witnessed but NOT demonstrated: only ${r.soundness.forgeryRejected}/${r.soundness.forgeryTested} forgeries rejected — a consistent forged witness can satisfy the relation for a false statement`,
+  },
   // envelope security: a contract hidden behind an insecure P2SH20 hash (OP_HASH160,
   // ~2^80 collision security) is DISALLOWED — it must use P2SH32, or deploy bare / P2S.
   // `secure: false` disqualifies the entry (it is excluded from the frontier leaders and

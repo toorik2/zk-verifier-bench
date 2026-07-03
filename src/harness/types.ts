@@ -130,6 +130,22 @@ export interface Scenario {
    * input validation (BenchmarkResult.inputValidation). Each must be REJECTED.
    */
   invalidInputs?: Step[][];
+  /**
+   * Adversarial FORGERY runs for a WITNESS-CARRYING verifier (Implementation.soundnessModel ===
+   * 'witnessed'): one that moves part of the verification relation OFF-CHAIN into a computed
+   * unlocking witness (e.g. a residue final-exponentiation witness `c`, so the script checks a
+   * cheap algebraic relation instead of computing e(…)^((p^k−1)/r) on-chain). Such a verifier has
+   * a soundness surface the bit-flip `tamperable` test does NOT reach: bit-flipping breaks the
+   * witness (rejects), but an attacker who controls the WHOLE unlocking can compute a CONSISTENT
+   * witness for a FALSE statement. Each entry is a full step-list for a FALSE statement carrying
+   * the STRONGEST witness the verifier's OWN honest generator produces for it (the adversary's best
+   * shot — e.g. the residue witness of the false pairing product, and the degenerate c=0 witness);
+   * each MUST be REJECTED. Because that same generator produces the accepted `valid` /
+   * `extraValidProofs` runs, a generator too weak to forge cannot pass by shipping trivially-broken
+   * forgeries — the accepted runs pin it honest. An 'on-chain' verifier recomputes the relation and
+   * has no such surface, so it supplies none.
+   */
+  forgery?: Step[][];
   /** if true, the harness derives invalid runs by bit-flipping each step's witness */
   tamperable?: boolean;
   /**
@@ -170,6 +186,21 @@ export interface Implementation {
    * empirically. Defaults to 'runtime' when omitted.
    */
   proofBinding?: 'runtime' | 'baked';
+  /**
+   * How the verifier establishes SOUNDNESS, which decides whether it must demonstrate
+   * forgery-resistance (see Scenario.forgery, BenchmarkResult.soundness):
+   *   'on-chain'  - recomputes the full verification relation on-chain (e.g. the final
+   *                 exponentiation e(…)^((p^k−1)/r)); a false statement cannot satisfy it, so
+   *                 there is no witness-forgery surface. nchain, scrypt, the reference
+   *                 groth16.cash. (Default when omitted.)
+   *   'witnessed' - offloads part of the relation to an off-chain-computed unlocking witness
+   *                 (e.g. an ePrint-2024/640 residue final-exp witness). The bit-flip `tamperable`
+   *                 test does not probe forging a CONSISTENT witness for a FALSE statement, so such
+   *                 a verifier MUST supply Scenario.forgery runs and reject EVERY one, or `pass` is
+   *                 false — otherwise a broken witness gate (e.g. a missing c≠0 guard that lets a
+   *                 c=0 witness satisfy the relation for any statement) would go undetected.
+   */
+  soundnessModel?: 'on-chain' | 'witnessed';
   /**
    * For a token-threading covenant entry (its steps carry `Step.covenant`): does the
    * covenant actually enforce TOKEN SAFETY, i.e. that the carried state token cannot
@@ -269,6 +300,15 @@ export interface BenchmarkResult {
    * single-tx verifier is caught by the verification equation, so it can't demonstrate
    * validation (see harness/adversarial.ts). */
   inputValidation: { tested: number; rejected: number; enforced: boolean };
+  /**
+   * Forgery-soundness: does a WITNESS-CARRYING verifier reject a CONSISTENT forgery? A
+   * verifier that offloads part of the relation to an off-chain-computed unlocking witness
+   * (soundnessModel 'witnessed', e.g. a residue final-exponentiation witness) has a soundness
+   * surface the bit-flip `tamperable` test does not reach — an attacker crafting a valid-looking
+   * witness for a FALSE statement (Scenario.forgery). `forgeryTested`/`forgeryRejected` count
+   * those runs; `demonstrated` = every one was rejected (always true for an 'on-chain' verifier,
+   * which has no such surface). A 'witnessed' verifier with `demonstrated === false` FAILS `pass`. */
+  soundness: { model: 'on-chain' | 'witnessed'; forgeryTested: number; forgeryRejected: number; demonstrated: boolean };
   /** correctness was judged under the BSV post-Genesis OP_RETURN-terminator rule
    * (the valid run halts at a reachable OP_RETURN, which fails on strict BCH) */
   bsvOpReturn: boolean;

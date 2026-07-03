@@ -1,0 +1,8 @@
+{
+  "description": "Forgery-soundness demo: a witness-carrying verifier that rejects a consistent c=0 forgery (SOUND) vs one that omits the c!=0 guard and accepts it (BROKEN). Both pass the bit-flip tamper test; only the forgery gate separates them. See docs/forgery-soundness.md.",
+  "soundLock": "5279009e5479009e9b6908ffffffffffffff1f5354795579957c56795779959593789752557a567a95955279977c547a95527997537a7b957b979c",
+  "brokenLock": "08ffffffffffffff1f5354795579957c56795779959593789752557a567a95955279977c547a95527997537a7b957b979c",
+  "validUnlocking": "53525c011f",
+  "forgeryUnlocking": "000002780302e703",
+  "tamperUnlocking": "53535c011f"
+}
